@@ -145,7 +145,6 @@ def alt():
    
     download(distrdir, url, iso)
 
-
 def centos():
     distrdir = distr + 'centos\\'
     if not os.path.exists(distrdir):
@@ -180,30 +179,8 @@ def centos():
     download(distrdir, url, iso)
 
 
-"""
-    versions.sort() # сортирую массив, чтобы получить самую последнюю доступную версию
-    f.close()
-    url = 'https://releases.ubuntu.com/'+ versions[-1] + '/' #самвя свежая версия
-    page = urllib.request.urlopen(url)
-    content = page.read()
-    f = open("data2.req", "w")
-    f.write(str(content))
-    f.close()
-    f=open(workfolder + r'data2.req',"r")
-    pattern = re.compile('<\/td><td><a.*?(ubuntu-' + versions[-1] + '-desktop-amd64\.iso)<\/a>')
-    for i, line in enumerate(open(workfolder + 'data2.req')):
-        for match in re.finditer(pattern, line):
-            iso = str(match.group(1))
-            url = 'https://releases.ubuntu.com/' + versions[-1] + '/'
-
-"""
-
-
 
 def download(distrdir, url, iso):
-    print(distrdir)
-    print(url)
-    print(iso)
     if os.path.exists(distrdir + iso):
         print(r'Файл ' + distrdir + iso + r' уже существует')
     else:
