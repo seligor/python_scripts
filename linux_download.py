@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import urllib.request
 #import requests
@@ -92,8 +93,117 @@ def fedora():
     os.remove('data.req')
     download(distrdir, url, iso)
 
+def redos():
+    distrdir = distr + '\\redos\\'
+    if not os.path.exists(distrdir):
+        os.makedirs(distrdir)
+    url = 'https://redos.red-soft.ru/product/downloads/'
+    page = urllib.request.urlopen(url)
+    content = page.read()
+    f = open("data.req", "w")
+    f.write(str(content))
+    f.close()
+    f=open(workfolder + r'data.req',"r")
+    pattern = re.compile('<a href="(https:\/\/files\.red-soft\.ru\/redos\/8\.\d{1,2}\/x86_64\/iso\/)(redos[-\w\d.]{18,28}-x86_64-DVD1\.iso)" target="_blank" class="downloads-files__item-value">')
+    for i, line in enumerate(open(workfolder + 'data.req')):
+        for match in re.finditer(pattern, line):
+            url = str(match.group(1))
+            iso = str(match.group(2))
+            print(iso)
+            print(url)
+    f.close()
+    os.remove('data.req')
+    download(distrdir, url, iso)
+
+def alt():
+    distrdir = distr + 'alt\\'
+    if not os.path.exists(distrdir):
+        os.makedirs(distrdir)
+    url = 'https://www.basealt.ru/alt-workstation/download/'
+    page = urllib.request.urlopen(url)
+    content = page.read()
+    f = open("data.req", "w")
+    f.write(str(content))
+    f.close()
+    versions = []
+    p = []
+    f=open(workfolder + r'data.req',"r")
+    pattern = re.compile('href="(https:\/\/download.basealt.ru\/pub\/distributions\/ALTLinux\/(p\d+)\/images\/workstation\/x86_64\/)(alt-workstation-(\d{1,2}\.\d+)\-x86_64.iso)"')
+    for i, line in enumerate(open(workfolder + 'data.req')):
+        for match in re.finditer(pattern, line):
+            url = str(match.group(1))
+            vp = str(match.group(2))
+            p.append(vp)
+            p.sort(reverse=True)
+            version = str(match.group(4))
+            versions.append(version)
+            versions.sort(reverse=True)
+            url = 'https://download.basealt.ru/pub/distributions/ALTLinux/'+p[-1]+'/images/workstation/x86_64/'
+            iso = 'alt-workstation-'+versions[-1]+'-x86_64.iso'
+    f.close()
+    os.remove('data.req')
+   
+    download(distrdir, url, iso)
+
+
+def centos():
+    distrdir = distr + 'centos\\'
+    if not os.path.exists(distrdir):
+        os.makedirs(distrdir)
+    url = 'https://www.centos.org/download/'
+    page = urllib.request.urlopen(url)
+    content = page.read()
+    f = open("data.req", "w")
+    f.write(str(content))
+    f.close()
+    versions = []
+    f=open(workfolder + r'data.req',"r")
+    pattern = re.compile('href="(https:\/\/mirrors\.centos\.org\/mirrorlist\?path=\/(\d+)-stream\/BaseOS\/x86_64\/iso\/(CentOS-Stream-(\d+)-latest-x86_64-dvd1.iso)&amp;redirect=1&amp;protocol=https)">')
+    for i, line in enumerate(open(workfolder + 'data.req')):
+        for match in re.finditer(pattern, line):
+            url1 = str(match.group(1))
+            iso = str(match.group(3))
+            page = urllib.request.urlopen(url1)
+            content = page.read()
+            f = open("data2.req", "w")
+            f.write(str(content))
+            f.close()
+            f=open(workfolder + r'data2.req',"r")
+            pattern = re.compile('(http:\/\/[\w.\-]+\.ru\/[\w\.\-\/]+\/x86_64\/iso\/)'+iso)
+            for i, line in enumerate(open(workfolder + 'data2.req')):
+                for match in re.finditer(pattern, line):
+                    url= str(match.group(1))
+            f.close()
+    f.close()
+    os.remove('data.req')
+    os.remove('data2.req')
+    download(distrdir, url, iso)
+
+
+"""
+    versions.sort() # сортирую массив, чтобы получить самую последнюю доступную версию
+    f.close()
+    url = 'https://releases.ubuntu.com/'+ versions[-1] + '/' #самвя свежая версия
+    page = urllib.request.urlopen(url)
+    content = page.read()
+    f = open("data2.req", "w")
+    f.write(str(content))
+    f.close()
+    f=open(workfolder + r'data2.req',"r")
+    pattern = re.compile('<\/td><td><a.*?(ubuntu-' + versions[-1] + '-desktop-amd64\.iso)<\/a>')
+    for i, line in enumerate(open(workfolder + 'data2.req')):
+        for match in re.finditer(pattern, line):
+            iso = str(match.group(1))
+            url = 'https://releases.ubuntu.com/' + versions[-1] + '/'
+
+"""
+
+
 
 def download(distrdir, url, iso):
+    print(distrdir)
+    print(url)
+    print(iso)
     if os.path.exists(distrdir + iso):
         print(r'Файл ' + distrdir + iso + r' уже существует')
     else:
@@ -114,7 +224,23 @@ if __name__ == "__main__":
             ubuntu()
         if sys.argv[1] == '--fedora':
             fedora()
+        if sys.argv[1] == '--redos':
+            redos()
+        if sys.argv[1] == '--alt':
+            alt()
+        if sys.argv[1] == '--centos':
+            centos()
+
         else:
-            print('Неверное указание')
+            print('Неверное указание (такой ОС нет в списке принимаемых аргументов)')
     else:
-        print('Напишите название дистрибутива для скачивания. \n Принимаются значения: \n --debian Скачивание дистрибутива debian \n --ubuntu  Скачивание дистрибутива ubuntu \n --fedora Скачивание дистрибутива fedora')
+        print("""\n\nНапишите название дистрибутива для скачивания.
+
+                 Принимаются значения:
+                 --debian Скачивание дистрибутива debian
+                 --ubuntu  Скачивание дистрибутива ubuntu
+                 --fedora Скачивание дистрибутива fedora
+                 --redos Скачивание дистрибутива redos
+                 --alt Скачивание дистрибутива ALTLiniux
+                 --centos Скачивание дистрибутива CentOS
+              """)
