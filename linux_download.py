@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
 import os
 import urllib.request
-#import requests
+import requests
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 import re
-import requests
 from urllib.parse import urlencode
 import sys
 workfolder = os.getcwd() + '\\'
@@ -109,8 +107,6 @@ def redos():
         for match in re.finditer(pattern, line):
             url = str(match.group(1))
             iso = str(match.group(2))
-            print(iso)
-            print(url)
     f.close()
     os.remove('data.req')
     download(distrdir, url, iso)
@@ -142,7 +138,35 @@ def alt():
             iso = 'alt-workstation-'+versions[-1]+'-x86_64.iso'
     f.close()
     os.remove('data.req')
-   
+    download(distrdir, url, iso)
+
+def altserver():
+    distrdir = distr + 'alt\\'
+    if not os.path.exists(distrdir):
+        os.makedirs(distrdir)
+    url = 'https://www.basealt.ru/alt-server/download'
+    page = urllib.request.urlopen(url)
+    content = page.read()
+    f = open("data.req", "w")
+    f.write(str(content))
+    f.close()
+    versions = []
+    p = []
+    f=open(workfolder + r'data.req',"r")
+    pattern = re.compile('href="(https:\/\/download.basealt.ru\/pub\/distributions\/ALTLinux\/(p\d+)\/images\/server\/x86_64\/)(alt-server-(\d{1,2}\.\d+)\-x86_64.iso)"')
+    for i, line in enumerate(open(workfolder + 'data.req')):
+        for match in re.finditer(pattern, line):
+            url = str(match.group(1))
+            vp = str(match.group(2))
+            p.append(vp)
+            p.sort(reverse=True)
+            version = str(match.group(4))
+            versions.append(version)
+            versions.sort(reverse=True)
+            url = 'https://download.basealt.ru/pub/distributions/ALTLinux/'+p[-1]+'/images/server/x86_64/'
+            iso = 'alt-server-'+versions[-1]+'-x86_64.iso'
+    f.close()
+    os.remove('data.req')
     download(distrdir, url, iso)
 
 def centos():
@@ -178,9 +202,56 @@ def centos():
     os.remove('data2.req')
     download(distrdir, url, iso)
 
+def alma():
+    distrdir = distr + '\\alma\\'
+    if not os.path.exists(distrdir):
+        os.makedirs(distrdir)
+    url = 'https://almalinux.org/get-almalinux/'
+    st_accept = "text/html" # говорим веб-серверу, 
+                            # что хотим получить html. Ибо обычные запросы алма почему то 403 делает. Притворяемся брвузером
+    st_useragent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_3_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.4 Safari/605.1.15"
+    headers = {
+       "Accept": st_accept,
+       "User-Agent": st_useragent
+    }
+    req = requests.get("https://almalinux.org/get-almalinux/", headers)
+    # считываем текст HTML-документа
+    content = req.text
+    f = open("data.req", "w", encoding="UTF-8")
+    f.write(str(content))
+    f.close()
+    versions = []   #создаём массив, куда поместим все доступные версии для скачивания
+    f=open(workfolder + r'data.req',"r")
+    pattern = re.compile('<a href=(https:\/\/repo.almalinux.org\/almalinux\/)(\d+\.\d+)(\/isos\/x86_64\/)(AlmaLinux\-)(\d+\.\d+)(\-x86_64\-dvd\.iso)>[\w\.\s]+<\/a>')
+    for i, line in enumerate(open(workfolder + 'data.req')):
+        for match in re.finditer(pattern, line):
+            version = str(match.group(2)) # для версий из 2 чисел
+            versions.append(version)
+    versions.sort() # сортирую массив, чтобы получить самую последнюю доступную версию
+    f.close()
+    version = versions[-1]
+    url = str(match.group(1))+version+str(match.group(3))
+    iso = str(match.group(4))+version+str(match.group(6))
+    os.remove('data.req')
+    download(distrdir, url, iso)
 
+
+def alllinux():
+    ubuntu()
+    debian()
+    fedora()
+#    rosa() 
+#    astra()
+    centos()
+#    redhat()
+    alma()
+    alt()
+    altserver()
+    redos()
 
 def download(distrdir, url, iso):
+    print(url)
+    print(iso)
     if os.path.exists(distrdir + iso):
         print(r'Файл ' + distrdir + iso + r' уже существует')
     else:
@@ -197,19 +268,24 @@ if __name__ == "__main__":
     if len (sys.argv) > 1:
         if sys.argv[1] == '--debian':
             debian()
-        if sys.argv[1] == '--ubuntu':
+        elif sys.argv[1] == '--ubuntu':
             ubuntu()
-        if sys.argv[1] == '--fedora':
+        elif sys.argv[1] == '--fedora':
             fedora()
-        if sys.argv[1] == '--redos':
+        elif sys.argv[1] == '--redos':
             redos()
-        if sys.argv[1] == '--alt':
+        elif sys.argv[1] == '--alt':
             alt()
-        if sys.argv[1] == '--centos':
+        elif sys.argv[1] == '--altserver':
+            altserver()
+        elif sys.argv[1] == '--centos':
             centos()
-
+        elif sys.argv[1] == '--alma':
+            alma()
+        elif sys.argv[1] == '--alllinux':
+            alllinux()
         else:
-            print('Неверное указание (такой ОС нет в списке принимаемых аргументов)')
+            print('Неверное указание (такой ОС нет в списке принимаемых аргументов)', sys.argv[1])
     else:
         print("""\n\nНапишите название дистрибутива для скачивания.
 
@@ -219,5 +295,8 @@ if __name__ == "__main__":
                  --fedora Скачивание дистрибутива fedora
                  --redos Скачивание дистрибутива redos
                  --alt Скачивание дистрибутива ALTLiniux
+                 --altserver Скачивание дистрибутива ALTLinux server
                  --centos Скачивание дистрибутива CentOS
+                 --alma Скачивание дистрибутива AlmaLinux
+                 --alllinux Скачивание всех дистрибутивов (44.8 ГБ)
               """)
