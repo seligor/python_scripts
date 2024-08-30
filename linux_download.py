@@ -218,6 +218,8 @@ def download(distrdir, url, iso):
         logger.error(f'Ошибка скачивания файла: {e}')
     except IOError as e:
         logger.error(f'Ошибка при записи файла: {e}')
+    except KeyboardInterrupt:
+        logger.warning('Скачивание было прервано пользователем')
 
 
 if __name__ == "__main__":
