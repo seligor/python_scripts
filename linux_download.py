@@ -228,8 +228,6 @@ def download(distrdir, url, iso, retries=3, backoff_factor=0.5):
                 logger.error(f'Ошибка скачивания файла: {e}')
                 break  # If a request exception occurs, exit the retry loop
 
-    except requests.exceptions.RequestException as e:
-        logger.error(f'Ошибка скачивания файла: {e}')
     except IOError as e:
         logger.error(f'Ошибка при записи файла: {e}')
     except KeyboardInterrupt:
