@@ -1,12 +1,15 @@
 import os
+import time
 import urllib.request
 from loguru import logger
 import requests
+from requests.exceptions import ConnectionError, Timeout, RequestException
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 import re
 import sys
 from tqdm import tqdm
+from http.client import IncompleteRead
 
 logger.remove()
 logger.add(sink=sys.stdout, format="<white>{time:YYYY-MM-DD HH:mm:ss}</white>"" | <level>{level: <8}</level>"" | <cyan><b>{line}</b></cyan>"" - <white><b>{message}</b></white>")
@@ -46,7 +49,6 @@ def ubuntu():
     url = 'https://releases.ubuntu.com/'
     with urllib.request.urlopen(url) as response:
         content = response.read().decode('utf-8')
-#    versions = []   #создаём массив, куда поместим все доступные версии для скачивания
     pattern = re.compile(
         r'">([12][24680].04.\d{1,2})/</a>|([12][24680]\.04)/</a>', re.DOTALL)
 
@@ -191,28 +193,40 @@ def alma():
         download(distrdir, addr, iso)
 
 
-def download(distrdir, url, iso):
+def download(distrdir, url, iso, retries=3, backoff_factor=0.5):
     try:
         if os.path.exists(os.path.join(distrdir, iso)):
             logger.error(f'Файл {os.path.join(distrdir, iso)} уже существует')
             return
 
         logger.info(
-            f'Идёт скачивание новой версии. По окончании скачивания появится файл {os.path.join(distrdir, iso)}')
+            f'Идёт скачивание дистрибутива. По окончании скачивания появится файл {os.path.join(distrdir, iso)}')
 
-        response = requests.get(url + iso, verify=False, stream=True)
-        response.raise_for_status()  # Raise an error for bad responses
+        for attempt in range(retries):
+            try:
+                response = requests.get(url + iso, verify=False, stream=True)
+                response.raise_for_status()  # Raise an error for bad responses
 
-        total_size = int(response.headers.get('content-length', 0))
-        block_size = 1024  # Size of each chunk we will write
-        with open(os.path.join(distrdir, iso), 'wb') as f:
-            # Initialize tqdm progress bar
-            with tqdm(total=total_size, unit='iB', unit_scale=True) as progress_bar:
-                for data in response.iter_content(block_size):
-                    f.write(data)
-                    progress_bar.update(len(data))
+                total_size = int(response.headers.get('content-length', 0))
+                block_size = 1024  # Size of each chunk we will write
 
-        logger.success(f'Файл успешно скачан')
+                with open(os.path.join(distrdir, iso), 'wb') as f:
+                    # Initialize tqdm progress bar
+                    with tqdm(total=total_size, unit='iB', unit_scale=True) as progress_bar:
+                        for data in response.iter_content(block_size):
+                            f.write(data)
+                            progress_bar.update(len(data))
+
+                logger.success(f'Файл успешно скачан')
+                return
+
+            except (IncompleteRead, ConnectionError, Timeout) as e:
+                logger.warning(f'Ошибка при загрузке (попытка {attempt + 1}): {e}')
+                time.sleep(backoff_factor * (2 ** attempt))  # Exponential backoff
+
+            except RequestException as e:
+                logger.error(f'Ошибка скачивания файла: {e}')
+                break  # If a request exception occurs, exit the retry loop
 
     except requests.exceptions.RequestException as e:
         logger.error(f'Ошибка скачивания файла: {e}')
