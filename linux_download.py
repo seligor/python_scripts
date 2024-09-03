@@ -12,8 +12,13 @@ from tqdm import tqdm
 from http.client import IncompleteRead
 
 logger.remove()
-logger.add(sink=sys.stdout, format="<white>{time:YYYY-MM-DD HH:mm:ss}</white>"" | <level>{level: <8}</level>"" | <cyan><b>{line}</b></cyan>"" - <white><b>{message}</b></white>")
-logger = logger.opt(colors=True)
+logger.add(sink=sys.stdout,
+           format="<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
+                  "<level>{level: <8}</level> | "
+                  "<cyan><b>{line}</b></cyan> - "
+                  "<white><b>{message}</b></white>",
+           colorize=True)
+#logger = logger.opt(colors=True)
 
 workfolder = os.getcwd() + '\\'
 
@@ -39,7 +44,8 @@ def debian():
     create_path_if_not_exist(distrdir)
     url = 'https://cdimage.debian.org/debian-cd/current/amd64/iso-dvd/'
     pattern = re.compile(
-        r'<tr class="odd">.*?<td class="indexcolname"><a href="(debian.*\.iso)">.*<td class="indexcollastmod">(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}).*</td></tr>',
+        r'<tr class="odd">.*?<td class="indexcolname"><a href="(debian.*\.iso)">.*'
+        r'<td class="indexcollastmod">(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}).*</td></tr>',
         re.DOTALL
     )
 
@@ -106,7 +112,9 @@ def redos():
     create_path_if_not_exist(distrdir)
     url = 'https://redos.red-soft.ru/product/downloads/'
     pattern = re.compile(
-        r'<a href="(https://files\.red-soft\.ru/redos/8\.\d{1,2}/x86_64/iso/)(redos[-\w.]{18,28}-x86_64-DVD1\.iso)" target="_blank" class="downloads-files__item-value">')
+        r'<a href="(https://files\.red-soft\.ru/redos/8\.\d{1,2}/x86_64/iso/)(redos[-\w.]{18,28}-x86_64-DVD1\.iso)" '
+        r'target="_blank" class="downloads-files__item-value">'
+    )
     matches = pattern.findall(get_response_from_url(url))
     if matches:
         last_match = matches[-1]
@@ -122,22 +130,21 @@ def alt():
     if sys.argv[1] == '--alt':
         url = f'https://www.basealt.ru/alt-workstation/download/'
         pattern = re.compile(
-            r'href="(https://download.basealt.ru/pub/distributions/ALTLinux/(p\d+)/images/workstation/x86_64/)(alt-workstation-(\d{1,2}\.\d+)-x86_64.iso)"')
+            r'href="(https://download.basealt.ru/pub/distributions/ALTLinux/(p\d+)/images/workstation/x86_64/)'
+            r'(alt-workstation-(\d{1,2}\.\d+)-x86_64.iso)"'
+        )
     elif sys.argv[1] == '--altserver':
         url = 'https://www.basealt.ru/alt-server/download'
         pattern = re.compile(
-            r'href="(https://download.basealt.ru/pub/distributions/ALTLinux/(p\d+)/images/server/x86_64/)(alt-server-(\d{1,2}\.\d+)-x86_64.iso)"')
+            r'href="(https://download.basealt.ru/pub/distributions/ALTLinux/(p\d+)/images/server/x86_64/)'
+            r'(alt-server-(\d{1,2}\.\d+)-x86_64.iso)"'
+        )
 
     matches = pattern.findall(get_response_from_url(url))
     if matches:
-        if sys.argv[1] == '--alt':
-            last_match = matches[-1]
-        elif sys.argv[1] == '--altserver':
-            last_match = matches[0]
-        addr = last_match[0]
-        iso = last_match[2]
-        url = addr + '/'
-        download(distrdir, url, iso)
+        last_match = matches[-1] if sys.argv[1] == '--alt' else matches[0]
+        addr, iso = last_match[0], last_match[2]
+        download(distrdir, addr, iso)
 
 
 def centos():
@@ -145,7 +152,8 @@ def centos():
     create_path_if_not_exist(distrdir)
     url = 'https://www.centos.org/download/'
     pattern = re.compile(
-        r'href="(https://mirrors\.centos\.org/mirrorlist\?path=/(\d+)-stream/BaseOS/x86_64/iso/(CentOS-Stream-(\d+)-latest-x86_64-dvd1.iso)&amp;redirect=1&amp;protocol=https)">')
+        r'href="(https://mirrors\.centos\.org/mirrorlist\?path=/(\d+)-stream/BaseOS/x86_64/iso/'
+        r'(CentOS-Stream-(\d+)-latest-x86_64-dvd1.iso)&amp;redirect=1&amp;protocol=https)">')
     matches = pattern.findall(get_response_from_url(url))
     if matches:
         last_match = matches[0]
@@ -153,8 +161,8 @@ def centos():
         iso = last_match[2]
         with urllib.request.urlopen(addr) as response:
             content = response.read().decode('utf-8')
-        pattern = re.compile(r'(http://[\w.\-]+\.ru/[\w.\-/]+/x86_64/iso/)'+iso)
-        matches = pattern.findall(content)
+        download_pattern = re.compile(r'(http://[\w.\-]+\.ru/[\w.\-/]+/x86_64/iso/)'+iso)
+        matches = download_pattern.findall(content)
         if matches:
             addr = matches[0]
             logger.info('Скачивается дистрибутив Centos')
@@ -169,7 +177,8 @@ def alma():
     request.add_header('Accept', 'text/html')
     request.add_header('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 12_3_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.4 Safari/605.1.15' )
     pattern = re.compile(
-        r'<a href=(https://repo.almalinux.org/almalinux/)(\d+\.\d+)(/isos/x86_64/)(AlmaLinux-)(\d+\.\d+)(-x86_64-dvd\.iso)>[\w.\s]+</a>')
+        r'<a href=(https://repo.almalinux.org/almalinux/)(\d+\.\d+)(/isos/x86_64/)'
+        r'(AlmaLinux-)(\d+\.\d+)(-x86_64-dvd\.iso)>[\w.\s]+</a>')
     matches = pattern.findall(get_response_from_url(request))
     if matches:
         last_match = matches[0]
@@ -180,33 +189,34 @@ def alma():
 
 
 def download(distrdir, url, iso, retries=3, backoff_factor=0.5):
+    file_path = os.path.join(distrdir, iso)
     try:
-        if os.path.exists(os.path.join(distrdir, iso)):
-            logger.error(f'Файл {os.path.join(distrdir, iso)} уже существует')
+        if os.path.exists(file_path):
+            logger.error(f'Файл {file_path} уже существует')
             return
 
         logger.info(
-            f'Идёт скачивание дистрибутива. По окончании скачивания появится файл {os.path.join(distrdir, iso)}')
+            f'Идёт скачивание дистрибутива. По окончании скачивания появится файл {file_path}')
 
         for attempt in range(retries):
             try:
-                response = requests.get(url + iso, verify=False, stream=True)
-                response.raise_for_status()  # Raise an error for bad responses
+                with requests.get(url + iso, verify=False, stream=True) as response:
+                    response.raise_for_status()  # Raise an error for bad responses
 
-                total_size = int(response.headers.get('content-length', 0))
-                block_size = 1024  # Size of each chunk we will write
+                    total_size = int(response.headers.get('content-length', 0))
+                    block_size = 1024  # Size of each chunk we will write
 
-                with open(os.path.join(distrdir, iso), 'wb') as f:
+                    with open(file_path, 'wb') as f:
                     # Initialize tqdm progress bar
-                    with tqdm(total=total_size, unit='iB', unit_scale=True) as progress_bar:
-                        for data in response.iter_content(block_size):
-                            f.write(data)
-                            progress_bar.update(len(data))
+                        with tqdm(total=total_size, unit='iB', unit_scale=True) as progress_bar:
+                            for data in response.iter_content(block_size):
+                                f.write(data)
+                                progress_bar.update(len(data))
 
                 logger.success(f'Файл успешно скачан')
                 return
 
-            except (IncompleteRead, ConnectionError, Timeout) as e:
+            except (ConnectionError, Timeout) as e:
                 logger.warning(f'Ошибка при загрузке (попытка {attempt + 1}): {e}')
                 time.sleep(backoff_factor * (2 ** attempt))  # Exponential backoff
 
@@ -220,30 +230,26 @@ def download(distrdir, url, iso, retries=3, backoff_factor=0.5):
         logger.warning('Скачивание было прервано пользователем')
 
 
-if __name__ == "__main__":
-    if len (sys.argv) > 1:
-        if sys.argv[1] == '--debian':
-            debian()
-        elif sys.argv[1] == '--ubuntu':
-            ubuntu()
-        elif sys.argv[1] == '--fedora':
-            fedora()
-        elif sys.argv[1] == '--redos':
-            redos()
-        elif sys.argv[1] == '--alt':
-            type = 'worksattion'
-            alt()
-        elif sys.argv[1] == '--altserver':
-            type = 'server'
-            alt()
-        elif sys.argv[1] == '--centos':
-            centos()
-        elif sys.argv[1] == '--alma':
-            alma()
+def main():
+    distribution_handlers = {
+        '--debian': debian,
+        '--ubuntu': ubuntu,
+        '--fedora': fedora,
+        '--redos': redos,
+        '--alt': alt,
+        '--altserver': alt,
+        '--centos': centos,
+        '--alma': alma
+    }
+    if len(sys.argv) > 1:
+        command = sys.argv[1]
+        if command in distribution_handlers:
+            distribution_handlers[command]()
         else:
-            print('Неверное указание (такой ОС нет в списке принимаемых аргументов)', sys.argv[1])
+            print(f'Неверный аргумент: {command}. Укажите какую ОС нужно скачать.')
+            sys.exit(1)
     else:
-        print("""\n\nНапишите название дистрибутива для скачивания.
+        print("""\n\nУкажите название ОС для скачивания.
 
                  Принимаются значения:
                  --debian Скачивание дистрибутива debian
@@ -255,3 +261,8 @@ if __name__ == "__main__":
                  --centos Скачивание дистрибутива CentOS
                  --alma Скачивание дистрибутива AlmaLinux
               """)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
