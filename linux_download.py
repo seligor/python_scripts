@@ -20,19 +20,30 @@ workfolder = os.getcwd() + '\\'
 # укажите папку, куда должны складываться дистрибутивы
 distr = 'E:\\distr\\OS\\linux\\'
 
-def debian():
-    distrdir = distr + 'debian\\'
+
+def create_path_if_not_exist(distrdir):
     if not os.path.exists(distrdir):
         os.makedirs(distrdir)
-    url = 'https://cdimage.debian.org/debian-cd/current/amd64/iso-dvd/'
+        logger.info(f"Папка для дистрибутива создана")
+
+
+def get_response_from_url(url):
     with urllib.request.urlopen(url) as response:
         content = response.read().decode('utf-8')
+        logger.info(f"Получено содержимое страницы")
+        return content
+
+
+def debian():
+    distrdir = distr + 'debian\\'
+    create_path_if_not_exist(distrdir)
+    url = 'https://cdimage.debian.org/debian-cd/current/amd64/iso-dvd/'
     pattern = re.compile(
         r'<tr class="odd">.*?<td class="indexcolname"><a href="(debian.*\.iso)">.*<td class="indexcollastmod">(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2}).*</td></tr>',
         re.DOTALL
     )
 
-    matches = pattern.findall(content)
+    matches = pattern.findall(get_response_from_url(url))
 
     if matches:
         iso = matches[-1][0]
@@ -44,15 +55,12 @@ def debian():
 
 def ubuntu():
     distrdir = distr + 'ubuntu\\'
-    if not os.path.exists(distrdir):
-        os.makedirs(distrdir)
+    create_path_if_not_exist(distrdir)
     url = 'https://releases.ubuntu.com/'
-    with urllib.request.urlopen(url) as response:
-        content = response.read().decode('utf-8')
     pattern = re.compile(
         r'">([12][24680].04.\d{1,2})/</a>|([12][24680]\.04)/</a>', re.DOTALL)
 
-    versions = pattern.findall(content)
+    versions = pattern.findall(get_response_from_url(url))
     versions = list(set(versions))
     versions.sort()
     if versions[-1][0]:
@@ -79,14 +87,11 @@ def ubuntu():
 
 def fedora():
     distrdir = distr + 'fedora\\'
-    if not os.path.exists(distrdir):
-        os.makedirs(distrdir)
+    create_path_if_not_exist(distrdir)
     url = 'https://fedoraproject.org/workstation/download/'
-    with urllib.request.urlopen(url) as response:
-        content = response.read().decode('utf-8')
     pattern = re.compile(
         r'((https://download\.fedoraproject\.org.*/)(Fedora-Workstation-Live-x86_64-(\d{2})[-.\d]{3,6}\.iso))')
-    matches = pattern.findall(content)
+    matches = pattern.findall(get_response_from_url(url))
     if matches:
         last_match = matches[-1]
         iso_url = last_match[0]
@@ -95,16 +100,14 @@ def fedora():
         logger.info('Скачивается дистрибутив Fedora')
         download(distrdir, addr, iso)
 
+
 def redos():
     distrdir = distr + 'redos\\'
-    if not os.path.exists(distrdir):
-        os.makedirs(distrdir)
+    create_path_if_not_exist(distrdir)
     url = 'https://redos.red-soft.ru/product/downloads/'
-    with urllib.request.urlopen(url) as response:
-        content = response.read().decode('utf-8')
     pattern = re.compile(
         r'<a href="(https://files\.red-soft\.ru/redos/8\.\d{1,2}/x86_64/iso/)(redos[-\w.]{18,28}-x86_64-DVD1\.iso)" target="_blank" class="downloads-files__item-value">')
-    matches = pattern.findall(content)
+    matches = pattern.findall(get_response_from_url(url))
     if matches:
         last_match = matches[-1]
         addr = last_match[0]
@@ -112,52 +115,38 @@ def redos():
         logger.info('Скачивается дистрибутив Redos')
         download(distrdir, addr, iso)
 
+
 def alt():
     distrdir = distr + 'alt\\'
-    if not os.path.exists(distrdir):
-        os.makedirs(distrdir)
-    url = 'https://www.basealt.ru/alt-workstation/download/'
-    with urllib.request.urlopen(url) as response:
-        content = response.read().decode('utf-8')
-    pattern = re.compile(
-        r'href="(https://download.basealt.ru/pub/distributions/ALTLinux/(p\d+)/images/workstation/x86_64/)(alt-workstation-(\d{1,2}\.\d+)-x86_64.iso)"')
-    matches = pattern.findall(content)
+    create_path_if_not_exist(distrdir)
+    if sys.argv[1] == '--alt':
+        url = f'https://www.basealt.ru/alt-workstation/download/'
+        pattern = re.compile(
+            r'href="(https://download.basealt.ru/pub/distributions/ALTLinux/(p\d+)/images/workstation/x86_64/)(alt-workstation-(\d{1,2}\.\d+)-x86_64.iso)"')
+    elif sys.argv[1] == '--altserver':
+        url = 'https://www.basealt.ru/alt-server/download'
+        pattern = re.compile(
+            r'href="(https://download.basealt.ru/pub/distributions/ALTLinux/(p\d+)/images/server/x86_64/)(alt-server-(\d{1,2}\.\d+)-x86_64.iso)"')
+
+    matches = pattern.findall(get_response_from_url(url))
     if matches:
-        last_match = matches[-1]
+        if sys.argv[1] == '--alt':
+            last_match = matches[-1]
+        elif sys.argv[1] == '--altserver':
+            last_match = matches[0]
         addr = last_match[0]
         iso = last_match[2]
         url = addr + '/'
-        logger.info('Скачивается дистрибутив Altlinux desktop')
         download(distrdir, url, iso)
-
-def altserver():
-    distrdir = distr + 'alt\\'
-    if not os.path.exists(distrdir):
-        os.makedirs(distrdir)
-    url = 'https://www.basealt.ru/alt-server/download'
-    with urllib.request.urlopen(url) as response:
-        content = response.read().decode('utf-8')
-    pattern = re.compile(
-        r'href="(https://download.basealt.ru/pub/distributions/ALTLinux/(p\d+)/images/server/x86_64/)(alt-server-(\d{1,2}\.\d+)-x86_64.iso)"')
-    matches = pattern.findall(content)
-    if matches:
-        last_match = matches[0]
-        addr = last_match[0]
-        iso = last_match[2]
-        logger.info('Скачивается дистрибутив AltServer')
-        download(distrdir, addr, iso)
 
 
 def centos():
     distrdir = distr + 'centos\\'
-    if not os.path.exists(distrdir):
-        os.makedirs(distrdir)
+    create_path_if_not_exist(distrdir)
     url = 'https://www.centos.org/download/'
-    with urllib.request.urlopen(url) as response:
-        content = response.read().decode('utf-8')
     pattern = re.compile(
         r'href="(https://mirrors\.centos\.org/mirrorlist\?path=/(\d+)-stream/BaseOS/x86_64/iso/(CentOS-Stream-(\d+)-latest-x86_64-dvd1.iso)&amp;redirect=1&amp;protocol=https)">')
-    matches = pattern.findall(content)
+    matches = pattern.findall(get_response_from_url(url))
     if matches:
         last_match = matches[0]
         addr = last_match[0]
@@ -174,17 +163,14 @@ def centos():
 
 def alma():
     distrdir = distr + 'alma\\'
-    if not os.path.exists(distrdir):
-        os.makedirs(distrdir)
+    create_path_if_not_exist(distrdir)
     url = 'https://almalinux.org/get-almalinux/'
     request = urllib.request.Request(url)
     request.add_header('Accept', 'text/html')
     request.add_header('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 12_3_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.4 Safari/605.1.15' )
-    with urllib.request.urlopen(request) as response:
-        content = response.read().decode('utf-8')
     pattern = re.compile(
         r'<a href=(https://repo.almalinux.org/almalinux/)(\d+\.\d+)(/isos/x86_64/)(AlmaLinux-)(\d+\.\d+)(-x86_64-dvd\.iso)>[\w.\s]+</a>')
-    matches = pattern.findall(content)
+    matches = pattern.findall(get_response_from_url(request))
     if matches:
         last_match = matches[0]
         addr = last_match[0]+last_match[1]+last_match[2]
@@ -245,9 +231,11 @@ if __name__ == "__main__":
         elif sys.argv[1] == '--redos':
             redos()
         elif sys.argv[1] == '--alt':
+            type = 'worksattion'
             alt()
         elif sys.argv[1] == '--altserver':
-            altserver()
+            type = 'server'
+            alt()
         elif sys.argv[1] == '--centos':
             centos()
         elif sys.argv[1] == '--alma':
